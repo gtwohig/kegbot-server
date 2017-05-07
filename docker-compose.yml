@@ -1,0 +1,41 @@
+version: '2'
+services:
+  redis:
+    image: redis:3-alpine
+    expose:
+      - "6379"
+  db:
+    image: mysql:5.6 # pinned to 5.6 since a sqlmode change in 5.7.5 breaks things
+    expose:
+      - "3306"
+    volumes:
+      - ~/tmp/kegbot/db:/var/lib/mysql:rw
+    environment:
+      - MYSQL_ROOT_PASSWORD=kebgot-db-pass
+  server:
+    build: .
+    links:
+      - db:db.docker
+      - redis:redis.docker
+    volumes:
+      - ~/tmp/kegbot/server:/kegbot-data:rw
+    environment:
+      - KEGBOT_DB_HOST=db.docker
+      - KEGBOT_REDIS_HOST=redis.docker
+      - KEGBOT_SETTINGS_DIR=/etc/kegbot/
+      - KEGBOT_DB_PASS=kebgot-db-pass
+      - KEGBOT_DEBUG='true'
+      # - KEGBOT_EMAIL_USER=me
+      # - KEGBOT_EMAIL_PASSWORD=noPasswordsInGit
+      # - KEGBOT_EMAIL_HOST=aspmx.example.com
+      # - KEGBOT_EMAIL_FROM=me@example.com
+    expose:
+      - "8000"
+  nginx:
+    build: ./docker/nginx
+    links:
+      - server:kegbot.docker
+    volumes:
+      - ~/tmp/kegbot/server:/kegbot-data:ro
+    ports:
+      - "80:80"
